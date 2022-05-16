@@ -22,6 +22,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include <math.h>
+#include <stdio.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,11 +56,15 @@ UART_HandleTypeDef huart2;
 
 uint16_t ADCin = 0;						// ADC input from outside
 uint64_t _micro = 0;					// Timer count
+uint16_t dataOut = 0;					// for receive value from sawtooth,sawtoothinvert,sinewave and squarewave and enter value to MCP4922SetOutput
 uint16_t dataOutSawtooth = 0;			// DAC output Sawtooth wave
 uint16_t dataOutSawtoothinvert = 0;		// DAC output Sawtooth invert wave
 uint16_t dataOutSineWave = 0;			// DAC output Sine wave
 uint16_t dataOutSquareWave = 0;			// DAC output Square wave
 uint8_t DACConfig = 0b0011;				// Data 4 bit in front of (Selection bit, Input Buffer Control bit, Output Gain Selection bit and Output Shutdown Control Bit)
+
+//time
+uint16_t SamplingTime = 100;
 
 /* USER CODE END PV */
 
@@ -70,7 +77,20 @@ static void MX_SPI3_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM11_Init(void);
+
 /* USER CODE BEGIN PFP */
+
+// Generate Signal
+void GenerateSawtooth();
+void GenerateSawtoothinvert();
+void GenerateSineWave();
+void GenerateSquareWave();
+
+// Merge output
+void MCP4922SetOutput(uint8_t Config, uint16_t DACOutput);
+
+// Time
+uint64_t micros();
 
 /* USER CODE END PFP */
 
@@ -113,7 +133,14 @@ int main(void)
   MX_TIM3_Init();
   MX_DMA_Init();
   MX_TIM11_Init();
+
   /* USER CODE BEGIN 2 */
+
+  HAL_TIM_Base_Start(&htim3);		// start use timer3 to count Sampling ADC
+  HAL_TIM_Base_Start_IT(&htim11);	// start use timer11 to count Microsecond and open interrupt to use callBack function
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*) &ADCin, 1);		// Start to request value form ADC by using DMA to ask
+
+  HAL_GPIO_WritePin(LOAD_GPIO_Port, LOAD_Pin, GPIO_PIN_RESET);
 
   /* USER CODE END 2 */
 
@@ -121,6 +148,22 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+	  static uint64_t timestamp = 0;
+	  if (micros() - timestamp > SamplingTime){		//	run this function every 10ms
+		  timestamp = micros();
+
+		  // Equation for signal
+//		  GenerateSawtooth();
+		  GenerateSineWave();
+
+		  if (hspi3.State == HAL_SPI_STATE_READY && HAL_GPIO_ReadPin(SPI_SS_GPIO_Port, SPI_SS_Pin) == GPIO_PIN_SET){
+			  // function for combined 4bit and 12bit to 16 bit and send to MCP4922
+			  MCP4922SetOutput(DACConfig, dataOut);
+		  }
+	  }
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -439,6 +482,52 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void GenerateSawtooth(){
+	dataOut++;
+	dataOut %= 4096;
+}
+
+void GenerateSawtoothinvert(){
+
+}
+
+void GenerateSineWave(){		// don't finish
+	static float x = -3.14;
+	if (x>= -3.14 || x <= 3.14){
+		dataOut = sin(x);
+		x+=0.1;
+	}
+	else {
+		x = -3.14;
+	}
+}
+
+void GenerateSquareWave(){
+
+}
+
+void MCP4922SetOutput(uint8_t Config, uint16_t DACOutput){
+	uint32_t OutputPacket = (DACOutput & 0x0fff)|((Config & 0xf) << 12);	// bitwise Operation to merge the DACConfig and dataOutput
+	HAL_GPIO_WritePin(SPI_SS_GPIO_Port, SPI_SS_Pin, GPIO_PIN_RESET);		// write pin cs(invert) to low for select chip and input value in
+	HAL_SPI_Transmit_IT(&hspi3, &OutputPacket, 1);		// Send from nucleo to windows
+}
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
+	if (hspi == &hspi3){
+		HAL_GPIO_WritePin(SPI_SS_GPIO_Port, SPI_SS_Pin, GPIO_PIN_SET);		// after send all value in OutputPacket write pin cs(invert) to high for don't get any value in
+	}
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim){
+	if(htim == &htim11){
+		_micro += 65535;
+	}
+}
+
+inline uint64_t micros(){
+	return htim11.Instance -> CNT + _micro;
+}
 
 /* USER CODE END 4 */
 
