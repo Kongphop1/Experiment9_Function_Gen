@@ -155,6 +155,7 @@ int main(void)
 
 		  // Equation for signal
 //		  GenerateSawtooth();
+//		  GenerateSawtoothinvert();
 		  GenerateSineWave();
 
 		  if (hspi3.State == HAL_SPI_STATE_READY && HAL_GPIO_ReadPin(SPI_SS_GPIO_Port, SPI_SS_Pin) == GPIO_PIN_SET){
@@ -484,23 +485,37 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 void GenerateSawtooth(){
-	dataOut++;
+//	dataOut++;
+	dataOut+=0.5;
 	dataOut %= 4096;
 }
 
 void GenerateSawtoothinvert(){
-
+	static uint16_t dataOutInvert = 4095;
+	dataOut = dataOutInvert;
+//	dataOutInvert--;
+	dataOutInvert-=0.5;
+	if(dataOutInvert == 0){
+		dataOutInvert = 4095;
+	}
 }
 
-void GenerateSineWave(){		// don't finish
-	static float x = -3.14;
-	if (x>= -3.14 || x <= 3.14){
-		dataOut = sin(x);
-		x+=0.1;
+void GenerateSineWave(){
+//	static float x = -3.14;
+//	if (x>= -3.14 || x <= 3.14){
+//		dataOut = sin(x);
+//		x+=0.1;
+//	}
+//	else {
+//		x = -3.14;
+//	}
+	static uint8_t i=0;
+	dataOut = ((sin(i*2*3.14/100) + 1)*(4096/2));
+	i++;
+	if(i == 100){
+		i = 0;
 	}
-	else {
-		x = -3.14;
-	}
+
 }
 
 void GenerateSquareWave(){
