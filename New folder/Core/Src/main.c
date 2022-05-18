@@ -63,8 +63,13 @@ uint16_t dataOutSineWave = 0;			// DAC output Sine wave
 uint16_t dataOutSquareWave = 0;			// DAC output Square wave
 uint8_t DACConfig = 0b0011;				// Data 4 bit in front of (Selection bit, Input Buffer Control bit, Output Gain Selection bit and Output Shutdown Control Bit)
 
-//time
+// Time
 uint16_t SamplingTime = 100;
+float deltaT = 1;
+
+// Other
+float PI = 3.14159265;
+
 
 /* USER CODE END PV */
 
@@ -91,6 +96,9 @@ void MCP4922SetOutput(uint8_t Config, uint16_t DACOutput);
 
 // Time
 uint64_t micros();
+
+// Other
+
 
 /* USER CODE END PFP */
 
@@ -157,6 +165,7 @@ int main(void)
 //		  GenerateSawtooth();
 //		  GenerateSawtoothinvert();
 		  GenerateSineWave();
+
 
 		  if (hspi3.State == HAL_SPI_STATE_READY && HAL_GPIO_ReadPin(SPI_SS_GPIO_Port, SPI_SS_Pin) == GPIO_PIN_SET){
 			  // function for combined 4bit and 12bit to 16 bit and send to MCP4922
@@ -501,20 +510,23 @@ void GenerateSawtoothinvert(){
 }
 
 void GenerateSineWave(){
+
 //	static float x = -3.14;
-//	if (x>= -3.14 || x <= 3.14){
-//		dataOut = sin(x);
-//		x+=0.1;
-//	}
-//	else {
-//		x = -3.14;
-//	}
-	static uint8_t i=0;
-	dataOut = ((sin(i*2*3.14/100) + 1)*(4096/2));
-	i++;
-	if(i == 100){
-		i = 0;
+	if (PI >= -3.14 && PI <= 3.14){
+		dataOut = (sin(PI)*deltaT);
+		x+=0.1;
 	}
+	else{
+		PI = -3.14;
+	}
+
+//	// Another equation of sine wave generate
+//	static uint8_t i=0;
+//	dataOut = ((sin(i*2*3.14/100) + 1)*(4096/2));
+//	i++;
+//	if(i == 100){
+//		i = 0;
+//	}
 
 }
 
