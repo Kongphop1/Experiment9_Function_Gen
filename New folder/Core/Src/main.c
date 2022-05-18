@@ -512,12 +512,12 @@ void GenerateSawtoothinvert(){
 void GenerateSineWave(){
 
 //	static float x = -3.14;
-	if (PI >= -3.14 && PI <= 3.14){
+	if (PI >= -3.14159265 && PI <= 3.14159265){
 		dataOut = (sin(PI)*deltaT);
 		x+=0.1;
 	}
 	else{
-		PI = -3.14;
+		PI = -3.14159265;
 	}
 
 //	// Another equation of sine wave generate
